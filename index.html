@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>鄂式破碎机 · 3D交互模型</title>
+<style>
+:root{--bg:#0b1220;--panel:#121d30;--panel2:#17243a;--line:#263750;--text:#e8f0fb;--muted:#91a4bf;--accent:#49c6d8;--orange:#f3a64a}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:Inter,"Microsoft YaHei",system-ui,sans-serif}
+#app{display:grid;grid-template-columns:minmax(0,1fr) 330px;height:100%;width:100%}
+#stage{position:relative;min-width:0;background:radial-gradient(ellipse at 48% 42%,#1b2b42 0%,#0b1220 72%)}
+#view{width:100%;height:100%;display:block;touch-action:none}
+.topbar{position:absolute;left:18px;top:16px;right:18px;display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none;gap:12px}
+.brand{pointer-events:auto;background:#101c2dcc;border:1px solid #30425b;border-radius:12px;padding:11px 14px;backdrop-filter:blur(8px)}
+.brand strong{display:block;font-size:15px;letter-spacing:.04em}
+.brand small{color:var(--muted);font-size:11px}
+.hint{font-size:11px;color:#a9bad0;background:#101c2dbb;border:1px solid #2a3c55;border-radius:10px;padding:9px 12px}
+#labels{position:absolute;inset:0;pointer-events:none}
+.label{position:absolute;transform:translate(-50%,-50%);padding:4px 8px;border:1px solid #4a637f;border-radius:6px;background:#0d1928df;color:#dceaf8;font-size:11px;white-space:nowrap}
+.label:after{content:"";position:absolute;width:4px;height:4px;background:var(--accent);border-radius:50%;left:50%;bottom:-3px}
+.legend{position:absolute;left:18px;bottom:18px;display:flex;gap:12px;flex-wrap:wrap;background:#101c2dcc;border:1px solid #30425b;border-radius:10px;padding:9px 12px;font-size:11px;color:#b9c9dc}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+aside{background:linear-gradient(180deg,#121d30,#0f1929);border-left:1px solid var(--line);padding:18px 16px;overflow:auto}
+h1{font-size:18px;margin:0 0 4px}
+.sub{color:var(--muted);font-size:11px;margin-bottom:18px}
+.section{border-top:1px solid var(--line);padding:15px 0}
+.section h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#9fb4ce;margin:0 0 12px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:10px 0;font-size:12px}
+.value{color:var(--accent);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--accent);margin:8px 0}
+button{border:1px solid #38516e;background:#1a2a41;color:var(--text);border-radius:8px;padding:9px 12px;font-size:12px;cursor:pointer}
+button:hover{background:#243a56}
+button.primary{background:#176477;border-color:#248da0}
+.buttons{display:flex;gap:8px;flex-wrap:wrap}
+.toggle{display:flex;align-items:center;gap:8px;color:#c3d2e4;font-size:12px;margin:10px 0}
+.toggle input{accent-color:var(--accent)}
+.statgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat{background:#17253a;border:1px solid #293d58;border-radius:9px;padding:10px}
+.stat span{display:block;color:var(--muted);font-size:10px}
+.stat b{display:block;font-size:15px;margin-top:4px;color:#eaf5ff}
+.note{font-size:11px;line-height:1.65;color:#9fb0c5}
+.steps{padding-left:18px;margin:0;color:#c2d0e1;font-size:11px;line-height:1.8}
+#loading{position:absolute;inset:0;display:grid;place-items:center;color:#b9c9dc;font-size:13px;pointer-events:none}
+@media(max-width:760px){
+ #app{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) 42vh}
+ aside{border-left:0;border-top:1px solid var(--line);padding:12px 14px}
+ .topbar{left:10px;top:10px}.hint{display:none}.brand{padding:8px 10px}
+ .legend{left:10px;bottom:10px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+ <main id="stage">
+  <canvas id="view"></canvas>
+  <div class="topbar">
+   <div class="brand"><strong>鄂式破碎机 · 3D结构演示</strong><small>JAW CRUSHER / INTERACTIVE MODEL</small></div>
+   <div class="hint">鼠标拖动：旋转　滚轮：缩放　右键拖动：平移</div>
+  </div>
+  <div id="labels"></div>
+  <div class="legend">
+   <span><i class="dot" style="background:#d88a42"></i>机架</span>
+   <span><i class="dot" style="background:#55a9bd"></i>动鄂</span>
+   <span><i class="dot" style="background:#aeb9c8"></i>定鄂 / 衬板</span>
+   <span><i class="dot" style="background:#e8b44f"></i>偏心传动</span>
+  </div>
+  <div id="loading">正在加载 3D 场景…</div>
+ </main>
+ <aside>
+  <h1>运行控制台</h1><div class="sub">简化复摆式鄂式破碎机 · 交互演示</div>
+  <div class="section">
+   <h2>运动控制</h2>
+   <div class="buttons">
+    <button class="primary" id="play">❚❚ 暂停</button>
+    <button id="step">单步运动</button>
+    <button id="reset">重置视角 / 运动</button>
+   </div>
+   <div class="row"><label for="speed">转速（演示）</label><b class="value" id="speedVal">30 rpm</b></div>
+   <input id="speed" type="range" min="5" max="90" value="30">
+   <div class="row"><label for="stroke">动鄂摆幅</label><b class="value" id="strokeVal">中等</b></div>
+   <input id="stroke" type="range" min="1" max="3" value="2">
+   <label class="toggle"><input type="checkbox" id="showLabels" checked> 显示部件名称</label>
+   <label class="toggle"><input type="checkbox" id="showParticles" checked> 显示物料颗粒</label>
+  </div>
+  <div class="section">
+   <h2>运行状态</h2>
+   <div class="statgrid">
+    <div class="stat"><span>偏心轴转速</span><b id="rpmStat">30 rpm</b></div>
+    <div class="stat"><span>动鄂摆动频率</span><b id="freqStat">0.50 Hz</b></div>
+    <div class="stat"><span>当前相位</span><b id="phaseStat">0°</b></div>
+    <div class="stat"><span>工作状态</span><b id="stateStat">运行中</b></div>
+   </div>
+  </div>
+  <div class="section">
+   <h2>工作原理</h2>
+   <ol class="steps">
+    <li>电动机带动偏心轴连续旋转。</li>
+    <li>连杆 / 肘板机构推动动鄂周期性靠近、离开定鄂。</li>
+    <li>两鄂板靠近时挤压破碎物料，张开时物料向下排出。</li>
+   </ol>
+  </div>
+  <div class="section">
+   <h2>主要部件</h2>
+   <div class="note">机架、定鄂板、动鄂板、偏心轴、飞轮、肘板、进料口与排料口。模型为原理示意，尺寸比例、轴承和连接细节均已简化；摆动由偏心轴相位驱动，不代表特定厂家的施工图。</div>
+  </div>
+  <div class="section">
+   <h2>操作提示</h2>
+   <div class="note">可拖动模型观察内部结构。建议先暂停，再旋转到侧面观察动鄂与定鄂之间的破碎腔；恢复运行后可调节转速和摆幅。</div>
+  </div>
+ </aside>
+</div>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+
+const canvas=document.querySelector('#view');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(canvas.clientWidth,canvas.clientHeight,false);
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+const scene=new THREE.Scene();
+scene.fog=new THREE.Fog(0x0b1220,18,38);
+const camera=new THREE.PerspectiveCamera(42,canvas.clientWidth/canvas.clientHeight,.1,100);
+camera.position.set(8.5,6.3,10.5);
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.target.set(0,2.5,0); controls.enableDamping=true; controls.dampingFactor=.06;
+controls.minDistance=5;controls.maxDistance=23;controls.maxPolarAngle=Math.PI*.49;
+scene.add(new THREE.HemisphereLight(0xc9e4ff,0x344052,2.0));
+const key=new THREE.DirectionalLight(0xffffff,3.2);key.position.set(6,10,7);key.castShadow=true;key.shadow.mapSize.set(2048,2048);scene.add(key);
+const rim=new THREE.DirectionalLight(0x5ac8db,1.2);rim.position.set(-7,4,-5);scene.add(rim);
+const mat=(color,metalness=.35,roughness=.48)=>new THREE.MeshStandardMaterial({color,metalness,roughness});
+const frameMat=mat(0xb96d36,.65,.35), darkMat=mat(0x27394e,.7,.35), jawMat=mat(0x338ca3,.65,.3), linerMat=mat(0xb7c2ce,.72,.32), goldMat=mat(0xe0a63e,.7,.28), steelMat=mat(0x7e91a5,.8,.25);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(200,200),mat(0x111c2b,.15,.9));ground.rotation.x=-Math.PI/2;ground.position.y=-.12;ground.receiveShadow=true;scene.add(ground);
+const grid=new THREE.GridHelper(30,30,0x29425a,0x1b2d42);grid.position.y=-.105;scene.add(grid);
+const root=new THREE.Group();scene.add(root);
+function box(parent,w,h,d,material,x,y,z, bevel=0){
+ const g=new THREE.BoxGeometry(w,h,d);const m=new THREE.Mesh(g,material);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;
+}
+function cyl(parent,r1,r2,len,material,x,y,z,axis='x',segments=32){
+ const m=new THREE.Mesh(new THREE.CylinderGeometry(r1,r2,len,segments),material);
+ if(axis==='x')m.rotation.z=Math.PI/2; if(axis==='z')m.rotation.x=Math.PI/2;
+ m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;
+}
+function beam(parent,a,b,r,material){
+ const A=new THREE.Vector3(...a),B=new THREE.Vector3(...b),dir=new THREE.Vector3().subVectors(B,A);
+ const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,dir.length(),16),material);
+ m.position.copy(A).add(B).multiplyScalar(.5);m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.normalize());m.castShadow=true;parent.add(m);return m;
+}
+// Base and fixed frame side cheeks
+box(root,5.6,.48,3.1,frameMat,0,.18,0);
+box(root,.42,5.9,.48,frameMat,-2.35,3.05,-1.15);
+box(root,.42,5.9,.48,frameMat,2.35,3.05,-1.15);
+box(root,.42,5.9,.48,frameMat,-2.35,3.05,1.15);
+box(root,.42,5.9,.48,frameMat,2.35,3.05,1.15);
+box(root,4.5,.38,2.3,darkMat,0,5.85,0);
+box(root,4.1,.32,2.0,frameMat,0,5.55,0);
+// Fixed jaw assembly
+const fixed=new THREE.Group();root.add(fixed);
+box(fixed,.34,4.35,.38,darkMat,1.72,3.25,0);
+const fixedPlate=box(fixed,.22,4.05,1.55,linerMat,1.47,3.3,0);
+for(let y=1.55;y<5.25;y+=.42) box(fixed,.26,.055,1.58,steelMat,1.45,y,0);
+// Moving jaw pivots from top
+const moving=new THREE.Group();root.add(moving);moving.position.set(-1.25,5.35,0);
+box(moving,.48,4.35,.5,jawMat,0,-2.05,0);
+const movingPlate=box(moving,.22,4.1,1.58,linerMat,.28,-2.12,0);
+for(let y=-3.9;y<-.2;y+=.42)box(moving,.27,.055,1.6,steelMat,.27,y,0);
+cyl(moving,.34,.34,2.9,goldMat,0,0,0,'z');
+for(let z of [-1.55,1.55])cyl(moving,.22,.22,.18,steelMat,0,0,z,'z');
+// Eccentric shaft across machine
+const shaftGroup=new THREE.Group();root.add(shaftGroup);shaftGroup.position.set(-1.05,5.55,0);
+cyl(shaftGroup,.18,.18,4.4,steelMat,0,0,0,'z');
+cyl(shaftGroup,.32,.32,.32,goldMat,0,0,-1.7,'z');
+cyl(shaftGroup,.32,.32,.32,goldMat,0,0,1.7,'z');
+// Flywheels on both sides, rings and spokes
+const wheels=[];
+function makeWheel(z){
+ const g=new THREE.Group();g.position.set(-1.05,5.55,z);root.add(g);
+ const rimMesh=new THREE.Mesh(new THREE.TorusGeometry(1.02,.13,12,48),goldMat);rimMesh.castShadow=true;g.add(rimMesh);
+ cyl(g,.25,.25,.28,steelMat,0,0,0,'z');
+ for(let i=0;i<6;i++){let a=i*Math.PI/3;beam(g,[Math.cos(a)*.2,Math.sin(a)*.2,0],[Math.cos(a)*.92,Math.sin(a)*.92,0],.065,goldMat);}
+ wheels.push(g);
+}
+makeWheel(-2.15);makeWheel(2.15);
+// Toggle plate / pitman and support links
+const linkage=new THREE.Group();root.add(linkage);
+const toggle=beam(linkage,[-1.1,1.35,0],[1.15,1.75,0],.13,steelMat);
+const toggle2=beam(linkage,[-1.1,1.35,0],[-2.0,.55,0],.12,darkMat);
+const support=beam(root,[-2.0,.55,-.7],[1.0,.55,-.7],.11,steelMat);
+// Flywheel-side guard rails
+for(let z of [-1.85,1.85]){box(root,4.8,.12,.12,darkMat,0,4.9,z);}
+// Feed hopper / opening frame
+box(root,3.1,.18,2.0,darkMat,0,6.35,0);
+beam(root,[-1.5,6.35,-.9],[-.9,5.7,-.9],.09,steelMat);
+beam(root,[1.5,6.35,-.9],[.9,5.7,-.9],.09,steelMat);
+// Ground discharge chute
+box(root,2.5,.16,1.8,steelMat,-.1,.72,0);
+// Simple material stones
+const stones=new THREE.Group();root.add(stones);
+const stoneMat=[mat(0x9d7958,.05,.95),mat(0xbaa17e,.05,.95),mat(0x7e8b91,.05,.95)];
+for(let i=0;i<18;i++){
+ const geo=new THREE.DodecahedronGeometry(.12+Math.random()*.12,0);
+ const m=new THREE.Mesh(geo,stoneMat[i%3]);m.position.set(.35+Math.random()*.65,4.6-Math.random()*3.6,(Math.random()-.5)*.75);m.rotation.set(Math.random()*3,Math.random()*3,Math.random()*3);m.castShadow=true;stones.add(m);
+}
+const labels=[
+ ['偏心轴',[-1.05,5.95,0]],['飞轮',[-1.05,6.65,2.2]],['动鄂板',[-.82,3.25,.95]],
+ ['定鄂板',[1.45,3.4,.95]],['破碎腔',[.1,3.3,1.0]],['肘板 / 连杆',[-.1,1.45,.7]],['排料口',[0,.85,1.0]]
+];
+const labelEls=labels.map(([name])=>{let e=document.createElement('div');e.className='label';e.textContent=name;document.querySelector('#labels').appendChild(e);return e;});
+let running=true,phase=0,speed=30,stroke=2,last=performance.now();
+const speedEl=document.querySelector('#speed'),strokeEl=document.querySelector('#stroke');
+function updateMotion(dt){
+ if(running)phase+=dt*(speed/60)*Math.PI*2;
+ const amp=[0,.045,.09,.14][stroke];
+ const swing=Math.sin(phase)*amp;
+ moving.rotation.z=swing;
+ // A mild visual rotation for eccentric shaft and flywheels
+ shaftGroup.rotation.z=phase;
+ wheels.forEach(w=>w.rotation.z=phase);
+ toggle.rotation.z=-swing*.55;
+ stones.children.forEach((s,i)=>{if(running){s.position.y-=dt*(.18+speed/180);s.position.x+=Math.sin(phase+i)*dt*.035;if(s.position.y<1.0){s.position.y=4.5+(i%4)*.12;s.position.x=.35+(i%5)*.12;}}});
+ document.querySelector('#phaseStat').textContent=((phase*180/Math.PI)%360).toFixed(0)+'°';
+ document.querySelector('#rpmStat').textContent=speed+' rpm';
+ document.querySelector('#freqStat').textContent=(speed/60).toFixed(2)+' Hz';
+ document.querySelector('#stateStat').textContent=running?'运行中':'已暂停';
+}
+function projectLabels(){
+ const rect=canvas.getBoundingClientRect();
+ labels.forEach(([name,p],i)=>{
+  const v=new THREE.Vector3(...p);v.project(camera);
+  const x=(v.x*.5+.5)*rect.width,y=(-v.y*.5+.5)*rect.height;
+  labelEls[i].style.left=x+'px';labelEls[i].style.top=y+'px';
+  labelEls[i].style.display=document.querySelector('#showLabels').checked&&v.z<1?'block':'none';
+ });
+}
+function animate(now){
+ const dt=Math.min((now-last)/1000,.05);last=now;updateMotion(dt);controls.update();
+ renderer.render(scene,camera);projectLabels();requestAnimationFrame(animate);
+}
+requestAnimationFrame(animate);
+function resize(){const w=canvas.clientWidth,h=canvas.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false);}
+new ResizeObserver(resize).observe(canvas);
+document.querySelector('#loading').style.display='none';
+document.querySelector('#play').onclick=()=>{running=!running;document.querySelector('#play').textContent=running?'❚❚ 暂停':'▶ 继续';};
+document.querySelector('#step').onclick=()=>{if(!running){phase+=Math.PI/8;updateMotion(0);}};
+document.querySelector('#reset').onclick=()=>{phase=0;speed=30;stroke=2;speedEl.value=30;strokeEl.value=2;camera.position.set(8.5,6.3,10.5);controls.target.set(0,2.5,0);controls.update();document.querySelector('#speedVal').textContent='30 rpm';document.querySelector('#strokeVal').textContent='中等';};
+speedEl.oninput=()=>{speed=+speedEl.value;document.querySelector('#speedVal').textContent=speed+' rpm';};
+strokeEl.oninput=()=>{stroke=+strokeEl.value;document.querySelector('#strokeVal').textContent=['','小','中等','大'][stroke];};
+document.querySelector('#showParticles').onchange=e=>stones.visible=e.target.checked;
+</script>
+</body>
+</html>
